@@ -1,0 +1,721 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile authenticated via Firebase Auth",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string", "format": "email" },
+        "firstName": { "type": "string", "maxLength": 100 },
+        "lastName": { "type": "string", "maxLength": 100 },
+        "currentTenantId": { "type": "string" },
+        "onboardingComplete": { "type": "boolean" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["email", "firstName", "lastName"]
+    },
+    "Tenant": {
+      "title": "Tenant",
+      "description": "Gym / Fitness Business Tenant",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "maxLength": 120 },
+        "ownerId": { "type": "string" },
+        "subdomain": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["name", "ownerId"]
+    },
+    "Exercise": {
+      "title": "Exercise",
+      "description": "Exercise definition in the library (system or custom)",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "maxLength": 120 },
+        "targetMuscleGroup": { "type": "string", "maxLength": 60 },
+        "secondaryMuscles": { "type": "array", "items": { "type": "string" } },
+        "equipment": { "type": "string", "maxLength": 60 },
+        "movementPattern": { "type": "string", "maxLength": 60 },
+        "exerciseType": { "type": "string", "maxLength": 60 },
+        "difficulty": { "type": "string", "enum": ["Beginner", "Intermediate", "Advanced"] },
+        "instructions": { "type": "array", "items": { "type": "string" } },
+        "tips": { "type": "array", "items": { "type": "string" } },
+        "videoUrl": { "type": "string" },
+        "isCustom": { "type": "boolean" },
+        "tenantId": { "type": "string" },
+        "createdBy": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["name", "targetMuscleGroup", "equipment", "movementPattern", "exerciseType", "difficulty", "isCustom"]
+    },
+    "Program": {
+      "title": "Program",
+      "description": "Training program designed for gym clients",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "maxLength": 120 },
+        "description": { "type": "string" },
+        "durationWeeks": { "type": "integer" },
+        "difficulty": { "type": "string", "enum": ["Beginner", "Intermediate", "Advanced"] },
+        "goal": { "type": "string" },
+        "status": { "type": "string", "enum": ["DRAFT", "ACTIVE", "ARCHIVED"] },
+        "workoutCount": { "type": "integer" },
+        "assignedClientCount": { "type": "integer" },
+        "tenantId": { "type": "string" },
+        "createdBy": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["name", "durationWeeks", "difficulty", "goal", "status", "tenantId"]
+    },
+    "Workout": {
+      "title": "Workout",
+      "description": "Scheduled workout day within a training program",
+      "type": "object",
+      "properties": {
+        "programId": { "type": "string" },
+        "tenantId": { "type": "string" },
+        "name": { "type": "string", "maxLength": 100 },
+        "description": { "type": "string" },
+        "weekNumber": { "type": "integer" },
+        "dayOfWeek": { "type": "string" },
+        "order": { "type": "integer" },
+        "exerciseCount": { "type": "integer" },
+        "isArchived": { "type": "boolean" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["programId", "name", "weekNumber", "order"]
+    },
+    "WorkoutExercise": {
+      "title": "WorkoutExercise",
+      "description": "Exercise reference and prescription within a workout",
+      "type": "object",
+      "properties": {
+        "workoutId": { "type": "string" },
+        "programId": { "type": "string" },
+        "tenantId": { "type": "string" },
+        "exerciseId": { "type": "string" },
+        "order": { "type": "integer" },
+        "setType": { "type": "string", "enum": ["NORMAL", "WARMUP", "DROP_SET", "FAILURE", "AMRAP", "TIMED", "EMOM", "CIRCUIT", "SUPERSET"] },
+        "sets": { "type": "integer" },
+        "reps": { "type": "string" },
+        "weight": { "type": "number" },
+        "weightUnit": { "type": "string", "enum": ["lbs", "kg"] },
+        "restSeconds": { "type": "integer" },
+        "durationSeconds": { "type": "integer" },
+        "tempo": { "type": "string" },
+        "rpe": { "type": "number" },
+        "rir": { "type": "number" },
+        "notes": { "type": "string" }
+      },
+      "required": ["exerciseId", "order", "setType", "sets", "reps", "restSeconds"]
+    },
+    "ProgramWeek": {
+      "title": "ProgramWeek",
+      "description": "Training week container within a program",
+      "type": "object",
+      "properties": {
+        "programId": { "type": "string" },
+        "tenantId": { "type": "string" },
+        "weekNumber": { "type": "integer" },
+        "name": { "type": "string", "maxLength": 100 },
+        "order": { "type": "integer" },
+        "focus": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["programId", "weekNumber", "name", "order"]
+    },
+    "ProgramScheduleItem": {
+      "title": "ProgramScheduleItem",
+      "description": "Assigned daily schedule entry for a week (Workout, Rest, or Optional)",
+      "type": "object",
+      "properties": {
+        "programId": { "type": "string" },
+        "tenantId": { "type": "string" },
+        "weekId": { "type": "string" },
+        "weekNumber": { "type": "integer" },
+        "dayOfWeek": { "type": "string", "enum": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"] },
+        "type": { "type": "string", "enum": ["WORKOUT", "REST", "OPTIONAL"] },
+        "workoutId": { "type": "string" },
+        "isOptional": { "type": "boolean" },
+        "order": { "type": "integer" },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["programId", "weekId", "dayOfWeek", "type", "order"]
+    },
+    "WorkoutTemplate": {
+      "title": "WorkoutTemplate",
+      "description": "Reusable workout template available across programs",
+      "type": "object",
+      "properties": {
+        "tenantId": { "type": "string" },
+        "name": { "type": "string", "maxLength": 100 },
+        "description": { "type": "string" },
+        "category": { "type": "string" },
+        "exerciseCount": { "type": "integer" },
+        "createdBy": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["name", "tenantId", "exerciseCount"]
+    },
+    "ProgramAssignment": {
+      "title": "ProgramAssignment",
+      "description": "Tenant-scoped client program assignment with snapshot metadata",
+      "type": "object",
+      "properties": {
+        "tenantId": { "type": "string" },
+        "programId": { "type": "string" },
+        "clientId": { "type": "string" },
+        "assignedBy": { "type": "string" },
+        "trainerId": { "type": "string" },
+        "startDate": { "type": "string" },
+        "endDate": { "type": "string" },
+        "status": { "type": "string", "enum": ["ACTIVE", "PAUSED", "COMPLETED", "CANCELLED"] },
+        "programVersion": { "type": "integer" },
+        "programSnapshotId": { "type": "string" },
+        "programName": { "type": "string", "maxLength": 120 },
+        "programDurationWeeks": { "type": "integer" },
+        "clientName": { "type": "string", "maxLength": 120 },
+        "clientEmail": { "type": "string" },
+        "trainerName": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" },
+        "pausedAt": { "type": "string" },
+        "cancelledAt": { "type": "string" },
+        "completedAt": { "type": "string" }
+      },
+      "required": ["tenantId", "programId", "clientId", "assignedBy", "startDate", "endDate", "status"]
+    },
+    "WorkoutSession": {
+      "title": "WorkoutSession",
+      "description": "Workout session and completion record for a client",
+      "type": "object",
+      "properties": {
+        "tenantId": { "type": "string" },
+        "clientId": { "type": "string" },
+        "assignmentId": { "type": "string" },
+        "programId": { "type": "string" },
+        "workoutId": { "type": "string" },
+        "workoutName": { "type": "string", "maxLength": 120 },
+        "scheduledDate": { "type": "string" },
+        "startedAt": { "type": "string" },
+        "completedAt": { "type": "string" },
+        "status": { "type": "string", "enum": ["IN_PROGRESS", "COMPLETED", "ABANDONED"] },
+        "totalExercises": { "type": "integer" },
+        "completedExercises": { "type": "integer" },
+        "totalSets": { "type": "integer" },
+        "completedSets": { "type": "integer" },
+        "durationMinutes": { "type": "integer" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["tenantId", "clientId", "assignmentId", "programId", "workoutId", "scheduledDate", "startedAt", "status"]
+    },
+    "WorkoutSetLog": {
+      "title": "WorkoutSetLog",
+      "description": "Individual completed set record in a workout session",
+      "type": "object",
+      "properties": {
+        "sessionId": { "type": "string" },
+        "exerciseId": { "type": "string" },
+        "setNumber": { "type": "integer" },
+        "setType": { "type": "string" },
+        "weight": { "type": "number" },
+        "weightUnit": { "type": "string", "enum": ["lbs", "kg"] },
+        "reps": { "type": "integer" },
+        "durationSeconds": { "type": "integer" },
+        "completed": { "type": "boolean" },
+        "completedAt": { "type": "string" }
+      },
+      "required": ["sessionId", "exerciseId", "setNumber", "setType", "completedAt"]
+    },
+    "BodyWeightLog": {
+      "title": "BodyWeightLog",
+      "description": "Historical body weight measurement log entry",
+      "type": "object",
+      "properties": {
+        "tenantId": { "type": "string" },
+        "clientId": { "type": "string" },
+        "weight": { "type": "number" },
+        "unit": { "type": "string", "enum": ["kg", "lbs"] },
+        "recordedAt": { "type": "string" },
+        "notes": { "type": "string", "maxLength": 500 },
+        "source": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["tenantId", "clientId", "weight", "unit", "recordedAt"]
+    },
+    "BodyMeasurement": {
+      "title": "BodyMeasurement",
+      "description": "Body circumference and dimension measurements",
+      "type": "object",
+      "properties": {
+        "tenantId": { "type": "string" },
+        "clientId": { "type": "string" },
+        "recordedAt": { "type": "string" },
+        "unit": { "type": "string", "enum": ["cm", "in"] },
+        "chest": { "type": "number" },
+        "waist": { "type": "number" },
+        "hips": { "type": "number" },
+        "neck": { "type": "number" },
+        "leftArm": { "type": "number" },
+        "rightArm": { "type": "number" },
+        "leftThigh": { "type": "number" },
+        "rightThigh": { "type": "number" },
+        "shoulders": { "type": "number" },
+        "calves": { "type": "number" },
+        "notes": { "type": "string", "maxLength": 500 },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["tenantId", "clientId", "recordedAt", "unit"]
+    },
+    "ProgressPhoto": {
+      "title": "ProgressPhoto",
+      "description": "Secure physique progress photos with privacy controls",
+      "type": "object",
+      "properties": {
+        "tenantId": { "type": "string" },
+        "clientId": { "type": "string" },
+        "photoUrl": { "type": "string" },
+        "thumbnailUrl": { "type": "string" },
+        "storagePath": { "type": "string" },
+        "category": { "type": "string", "enum": ["FRONT", "SIDE", "BACK", "CUSTOM"] },
+        "customTag": { "type": "string", "maxLength": 50 },
+        "visibility": { "type": "string", "enum": ["CLIENT_ONLY", "TRAINER_AND_OWNER"] },
+        "recordedAt": { "type": "string" },
+        "weightSnapshot": { "type": "number" },
+        "weightUnit": { "type": "string", "enum": ["kg", "lbs"] },
+        "notes": { "type": "string", "maxLength": 500 },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["tenantId", "clientId", "photoUrl", "category", "visibility", "recordedAt"]
+    },
+    "Goal": {
+      "title": "Goal",
+      "description": "Transformation, strength, and consistency target for a client",
+      "type": "object",
+      "properties": {
+        "tenantId": { "type": "string" },
+        "clientId": { "type": "string" },
+        "type": { "type": "string", "enum": ["BODY_WEIGHT", "STRENGTH", "CONSISTENCY", "CUSTOM"] },
+        "title": { "type": "string", "maxLength": 120 },
+        "description": { "type": "string", "maxLength": 500 },
+        "targetValue": { "type": "number" },
+        "startValue": { "type": "number" },
+        "currentValue": { "type": "number" },
+        "unit": { "type": "string", "maxLength": 30 },
+        "exerciseId": { "type": "string" },
+        "exerciseName": { "type": "string" },
+        "targetReps": { "type": "integer" },
+        "weeklyTarget": { "type": "integer" },
+        "startDate": { "type": "string" },
+        "targetDate": { "type": "string" },
+        "status": { "type": "string", "enum": ["ACTIVE", "COMPLETED", "PAUSED", "CANCELLED"] },
+        "completedAt": { "type": "string" },
+        "notes": { "type": "string", "maxLength": 500 },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["tenantId", "clientId", "type", "title", "targetValue", "startValue", "startDate", "status"]
+    },
+    "Milestone": {
+      "title": "Milestone",
+      "description": "Objective achievement unlocked through real training data",
+      "type": "object",
+      "properties": {
+        "tenantId": { "type": "string" },
+        "clientId": { "type": "string" },
+        "category": { "type": "string" },
+        "title": { "type": "string", "maxLength": 120 },
+        "description": { "type": "string", "maxLength": 500 },
+        "icon": { "type": "string" },
+        "tier": { "type": "string", "enum": ["BRONZE", "SILVER", "GOLD", "PLATINUM", "DIAMOND"] },
+        "unlocked": { "type": "boolean" },
+        "unlockedAt": { "type": "string" },
+        "progressValue": { "type": "number" },
+        "targetValue": { "type": "number" },
+        "metricLabel": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["tenantId", "clientId", "category", "title", "description", "icon", "tier", "unlocked", "targetValue"]
+    },
+    "Food": {
+      "title": "Food",
+      "description": "Nutrient profile for system or tenant-specific custom foods",
+      "type": "object",
+      "properties": {
+        "tenantId": { "type": "string" },
+        "name": { "type": "string", "maxLength": 120 },
+        "category": { "type": "string" },
+        "type": { "type": "string", "enum": ["SYSTEM", "CUSTOM"] },
+        "brand": { "type": "string", "maxLength": 100 },
+        "barcode": { "type": "string", "maxLength": 50 },
+        "servingSize": { "type": "number" },
+        "servingUnit": { "type": "string", "maxLength": 30 },
+        "calories": { "type": "number" },
+        "protein": { "type": "number" },
+        "carbs": { "type": "number" },
+        "fat": { "type": "number" },
+        "fiber": { "type": "number" },
+        "sugar": { "type": "number" },
+        "sodium": { "type": "number" },
+        "imageUrl": { "type": "string" },
+        "notes": { "type": "string", "maxLength": 500 },
+        "isArchived": { "type": "boolean" },
+        "createdBy": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["name", "category", "type", "servingSize", "servingUnit", "calories", "protein", "carbs", "fat"]
+    },
+    "Recipe": {
+      "title": "Recipe",
+      "description": "Multi-ingredient calculated recipe profile",
+      "type": "object",
+      "properties": {
+        "tenantId": { "type": "string" },
+        "name": { "type": "string", "maxLength": 120 },
+        "description": { "type": "string", "maxLength": 1000 },
+        "servings": { "type": "number" },
+        "prepTimeMinutes": { "type": "integer" },
+        "cookTimeMinutes": { "type": "integer" },
+        "instructions": { "type": "array", "items": { "type": "string" } },
+        "imageUrl": { "type": "string" },
+        "isArchived": { "type": "boolean" },
+        "createdBy": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["tenantId", "name", "servings"]
+    },
+    "MealPlan": {
+      "title": "MealPlan",
+      "description": "Nutrition and meal plan designed by coach or owner",
+      "type": "object",
+      "properties": {
+        "tenantId": { "type": "string" },
+        "name": { "type": "string", "maxLength": 120 },
+        "description": { "type": "string", "maxLength": 1000 },
+        "durationDays": { "type": "integer" },
+        "dailyCalorieTarget": { "type": "number" },
+        "proteinTarget": { "type": "number" },
+        "carbsTarget": { "type": "number" },
+        "fatTarget": { "type": "number" },
+        "waterTargetMl": { "type": "number" },
+        "notes": { "type": "string", "maxLength": 1000 },
+        "status": { "type": "string", "enum": ["DRAFT", "ACTIVE", "ARCHIVED"] },
+        "version": { "type": "integer" },
+        "assignedClientCount": { "type": "integer" },
+        "createdBy": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["tenantId", "name", "dailyCalorieTarget", "proteinTarget", "carbsTarget", "fatTarget", "status"]
+    },
+    "NutritionAssignment": {
+      "title": "NutritionAssignment",
+      "description": "Client nutrition plan assignment with historical snapshot",
+      "type": "object",
+      "properties": {
+        "tenantId": { "type": "string" },
+        "clientId": { "type": "string" },
+        "planId": { "type": "string" },
+        "planName": { "type": "string", "maxLength": 120 },
+        "startDate": { "type": "string" },
+        "endDate": { "type": "string" },
+        "status": { "type": "string", "enum": ["ACTIVE", "PAUSED", "COMPLETED", "CANCELLED"] },
+        "assignedBy": { "type": "string" },
+        "assignedByName": { "type": "string" },
+        "customCalorieTarget": { "type": "number" },
+        "customProteinTarget": { "type": "number" },
+        "customCarbsTarget": { "type": "number" },
+        "customFatTarget": { "type": "number" },
+        "customWaterTargetMl": { "type": "number" },
+        "assignedAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["tenantId", "clientId", "planId", "planName", "startDate", "status", "assignedBy", "assignedAt"]
+    },
+    "FoodLog": {
+      "title": "FoodLog",
+      "description": "Daily logged food entry by client with immutable historical snapshot",
+      "type": "object",
+      "properties": {
+        "tenantId": { "type": "string" },
+        "clientId": { "type": "string" },
+        "date": { "type": "string" },
+        "mealType": { "type": "string" },
+        "mealCustomName": { "type": "string", "maxLength": 100 },
+        "foodId": { "type": "string" },
+        "recipeId": { "type": "string" },
+        "foodNameSnapshot": { "type": "string", "maxLength": 120 },
+        "quantity": { "type": "number" },
+        "unit": { "type": "string", "maxLength": 30 },
+        "calories": { "type": "number" },
+        "protein": { "type": "number" },
+        "carbs": { "type": "number" },
+        "fat": { "type": "number" },
+        "fiber": { "type": "number" },
+        "sugar": { "type": "number" },
+        "sodium": { "type": "number" },
+        "notes": { "type": "string", "maxLength": 500 },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["tenantId", "clientId", "date", "mealType", "foodNameSnapshot", "quantity", "unit", "calories", "protein", "carbs", "fat"]
+    },
+    "WaterLog": {
+      "title": "WaterLog",
+      "description": "Water hydration log entry for client",
+      "type": "object",
+      "properties": {
+        "tenantId": { "type": "string" },
+        "clientId": { "type": "string" },
+        "date": { "type": "string" },
+        "amountMl": { "type": "number" },
+        "recordedAt": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["tenantId", "clientId", "date", "amountMl", "recordedAt"]
+    },
+    "CheckInTemplate": {
+      "title": "CheckInTemplate",
+      "description": "Customizable check-in questionnaire template created by coach or owner",
+      "type": "object",
+      "properties": {
+        "tenantId": { "type": "string" },
+        "name": { "type": "string", "maxLength": 120 },
+        "description": { "type": "string", "maxLength": 1000 },
+        "frequency": { "type": "string", "enum": ["WEEKLY", "BIWEEKLY", "MONTHLY", "CUSTOM"] },
+        "customDaysInterval": { "type": "integer" },
+        "status": { "type": "string", "enum": ["DRAFT", "ACTIVE", "ARCHIVED"] },
+        "version": { "type": "integer" },
+        "questionsCount": { "type": "integer" },
+        "createdBy": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["tenantId", "name", "frequency", "status"]
+    },
+    "CheckInAssignment": {
+      "title": "CheckInAssignment",
+      "description": "Assignment of check-in template to client",
+      "type": "object",
+      "properties": {
+        "tenantId": { "type": "string" },
+        "templateId": { "type": "string" },
+        "templateName": { "type": "string", "maxLength": 120 },
+        "clientId": { "type": "string" },
+        "clientName": { "type": "string", "maxLength": 120 },
+        "frequency": { "type": "string", "enum": ["WEEKLY", "BIWEEKLY", "MONTHLY", "CUSTOM"] },
+        "customDaysInterval": { "type": "integer" },
+        "startDate": { "type": "string" },
+        "endDate": { "type": "string" },
+        "dayOfWeek": { "type": "string" },
+        "status": { "type": "string", "enum": ["ACTIVE", "PAUSED", "COMPLETED", "CANCELLED"] },
+        "assignedBy": { "type": "string" },
+        "assignedAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["tenantId", "templateId", "clientId", "frequency", "startDate", "status", "assignedBy", "assignedAt"]
+    },
+    "CheckInRecord": {
+      "title": "CheckInRecord",
+      "description": "Check-in instance and submitted responses with immutable historical questions snapshots",
+      "type": "object",
+      "properties": {
+        "tenantId": { "type": "string" },
+        "assignmentId": { "type": "string" },
+        "templateId": { "type": "string" },
+        "templateName": { "type": "string", "maxLength": 120 },
+        "clientId": { "type": "string" },
+        "clientName": { "type": "string", "maxLength": 120 },
+        "dueDate": { "type": "string" },
+        "scheduledDate": { "type": "string" },
+        "status": { "type": "string", "enum": ["DRAFT", "DUE", "SUBMITTED", "REVIEWED", "OVERDUE", "CANCELLED"] },
+        "submittedAt": { "type": "string" },
+        "submittedBy": { "type": "string" },
+        "reviewedAt": { "type": "string" },
+        "reviewedBy": { "type": "string" },
+        "coachNote": { "type": "string", "maxLength": 2000 },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["tenantId", "templateId", "clientId", "dueDate", "status"]
+    },
+    "Habit": {
+      "title": "Habit",
+      "description": "Daily or scheduled behavioral habit definition",
+      "type": "object",
+      "properties": {
+        "tenantId": { "type": "string" },
+        "clientId": { "type": "string" },
+        "clientName": { "type": "string", "maxLength": 120 },
+        "name": { "type": "string", "maxLength": 120 },
+        "description": { "type": "string", "maxLength": 500 },
+        "type": { "type": "string", "enum": ["BOOLEAN", "COUNT", "DURATION", "QUANTITY"] },
+        "target": { "type": "number" },
+        "unit": { "type": "string", "maxLength": 30 },
+        "frequency": { "type": "string", "enum": ["DAILY", "SPECIFIC_DAYS", "WEEKLY_TARGET"] },
+        "startDate": { "type": "string" },
+        "endDate": { "type": "string" },
+        "status": { "type": "string", "enum": ["ACTIVE", "PAUSED", "ARCHIVED", "COMPLETED"] },
+        "ownership": { "type": "string", "enum": ["COACH_ASSIGNED", "CLIENT_PERSONAL"] },
+        "createdBy": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["tenantId", "clientId", "name", "type", "target", "frequency", "startDate", "status", "ownership"]
+    },
+    "HabitLog": {
+      "title": "HabitLog",
+      "description": "Daily logged progress for a habit",
+      "type": "object",
+      "properties": {
+        "tenantId": { "type": "string" },
+        "habitId": { "type": "string" },
+        "clientId": { "type": "string" },
+        "date": { "type": "string" },
+        "value": { "type": "number" },
+        "target": { "type": "number" },
+        "completed": { "type": "boolean" },
+        "unit": { "type": "string", "maxLength": 30 },
+        "notes": { "type": "string", "maxLength": 500 },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["tenantId", "habitId", "clientId", "date", "value", "target", "completed"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "Application user profiles"
+    },
+    "/tenants/{tenantId}": {
+      "schema": { "$ref": "#/entities/Tenant" },
+      "description": "Multi-tenant business organizations"
+    },
+    "/tenants/{tenantId}/checkInTemplates/{templateId}": {
+      "schema": { "$ref": "#/entities/CheckInTemplate" },
+      "description": "Check-in questionnaires and templates"
+    },
+    "/tenants/{tenantId}/checkInAssignments/{assignmentId}": {
+      "schema": { "$ref": "#/entities/CheckInAssignment" },
+      "description": "Client check-in schedule assignments"
+    },
+    "/tenants/{tenantId}/checkIns/{checkInId}": {
+      "schema": { "$ref": "#/entities/CheckInRecord" },
+      "description": "Submitted and draft client check-ins"
+    },
+    "/tenants/{tenantId}/habits/{habitId}": {
+      "schema": { "$ref": "#/entities/Habit" },
+      "description": "Client accountability habits"
+    },
+    "/tenants/{tenantId}/habitLogs/{logId}": {
+      "schema": { "$ref": "#/entities/HabitLog" },
+      "description": "Daily logged completions for habits"
+    },
+    "/tenants/{tenantId}/assignments/{assignmentId}": {
+      "schema": { "$ref": "#/entities/ProgramAssignment" },
+      "description": "Client training program assignments"
+    },
+    "/tenants/{tenantId}/nutritionAssignments/{assignmentId}": {
+      "schema": { "$ref": "#/entities/NutritionAssignment" },
+      "description": "Client nutrition plan assignments"
+    },
+    "/tenants/{tenantId}/foods/{foodId}": {
+      "schema": { "$ref": "#/entities/Food" },
+      "description": "Tenant custom food library"
+    },
+    "/tenants/{tenantId}/recipes/{recipeId}": {
+      "schema": { "$ref": "#/entities/Recipe" },
+      "description": "Tenant nutrition recipe library"
+    },
+    "/tenants/{tenantId}/mealPlans/{planId}": {
+      "schema": { "$ref": "#/entities/MealPlan" },
+      "description": "Tenant meal and nutrition plans"
+    },
+    "/tenants/{tenantId}/clients/{clientId}/foodLogs/{logId}": {
+      "schema": { "$ref": "#/entities/FoodLog" },
+      "description": "Client logged foods with historical snapshot"
+    },
+    "/tenants/{tenantId}/clients/{clientId}/waterLogs/{waterLogId}": {
+      "schema": { "$ref": "#/entities/WaterLog" },
+      "description": "Client hydration logs"
+    },
+    "/tenants/{tenantId}/workoutSessions/{sessionId}": {
+      "schema": { "$ref": "#/entities/WorkoutSession" },
+      "description": "Client workout execution sessions"
+    },
+    "/tenants/{tenantId}/workoutSessions/{sessionId}/sets/{setId}": {
+      "schema": { "$ref": "#/entities/WorkoutSetLog" },
+      "description": "Set logs for client workout session"
+    },
+    "/tenants/{tenantId}/clients/{clientId}/progressWeight/{weightId}": {
+      "schema": { "$ref": "#/entities/BodyWeightLog" },
+      "description": "Body weight tracking logs for a client"
+    },
+    "/tenants/{tenantId}/clients/{clientId}/measurements/{measurementId}": {
+      "schema": { "$ref": "#/entities/BodyMeasurement" },
+      "description": "Body tape measurements for a client"
+    },
+    "/tenants/{tenantId}/clients/{clientId}/progressPhotos/{photoId}": {
+      "schema": { "$ref": "#/entities/ProgressPhoto" },
+      "description": "Physique progress photos with privacy gating"
+    },
+    "/tenants/{tenantId}/clients/{clientId}/goals/{goalId}": {
+      "schema": { "$ref": "#/entities/Goal" },
+      "description": "Fitness, weight, and strength goals for a client"
+    },
+    "/tenants/{tenantId}/clients/{clientId}/milestones/{milestoneId}": {
+      "schema": { "$ref": "#/entities/Milestone" },
+      "description": "Verified milestone achievements for a client"
+    },
+    "/tenants/{tenantId}/exercises/{exerciseId}": {
+      "schema": { "$ref": "#/entities/Exercise" },
+      "description": "Tenant-specific custom exercises"
+    },
+    "/tenants/{tenantId}/programs/{programId}": {
+      "schema": { "$ref": "#/entities/Program" },
+      "description": "Tenant training programs"
+    },
+    "/tenants/{tenantId}/programs/{programId}/workouts/{workoutId}": {
+      "schema": { "$ref": "#/entities/Workout" },
+      "description": "Workouts in a training program"
+    },
+    "/tenants/{tenantId}/programs/{programId}/workouts/{workoutId}/exercises/{workoutExerciseId}": {
+      "schema": { "$ref": "#/entities/WorkoutExercise" },
+      "description": "Prescription and exercise references within a workout"
+    },
+    "/tenants/{tenantId}/programs/{programId}/weeks/{weekId}": {
+      "schema": { "$ref": "#/entities/ProgramWeek" },
+      "description": "Weeks within a training program"
+    },
+    "/tenants/{tenantId}/programs/{programId}/schedule/{scheduleItemId}": {
+      "schema": { "$ref": "#/entities/ProgramScheduleItem" },
+      "description": "Scheduled days and workouts in a training program"
+    },
+    "/tenants/{tenantId}/workoutTemplates/{templateId}": {
+      "schema": { "$ref": "#/entities/WorkoutTemplate" },
+      "description": "Reusable gym workout templates"
+    },
+    "/systemExercises/{exerciseId}": {
+      "schema": { "$ref": "#/entities/Exercise" },
+      "description": "Global curated system exercises available to all gyms"
+    },
+    "/systemFoods/{foodId}": {
+      "schema": { "$ref": "#/entities/Food" },
+      "description": "Global curated system food items available to all gyms"
+    }
+  }
+}

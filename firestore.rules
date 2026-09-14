@@ -1,0 +1,286 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isUser(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isTenantOwner(tenantId) {
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/tenants/$(tenantId)/members/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/tenants/$(tenantId)/members/$(request.auth.uid)).data.role == 'GYM_OWNER';
+    }
+
+    function isTenantTrainer(tenantId) {
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/tenants/$(tenantId)/members/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/tenants/$(tenantId)/members/$(request.auth.uid)).data.role == 'TRAINER';
+    }
+
+    function isTenantClient(tenantId) {
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/tenants/$(tenantId)/members/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/tenants/$(tenantId)/members/$(request.auth.uid)).data.role == 'CLIENT';
+    }
+
+    function isTenantMember(tenantId) {
+      return isAuthenticated() && 
+             exists(/databases/$(database)/documents/tenants/$(tenantId)/members/$(request.auth.uid));
+    }
+
+    function isNewTenantCreation(tenantId) {
+      return isAuthenticated() &&
+             !exists(/databases/$(database)/documents/tenants/$(tenantId)) &&
+             existsAfter(/databases/$(database)/documents/tenants/$(tenantId)) &&
+             getAfter(/databases/$(database)/documents/tenants/$(tenantId)).data.ownerId == request.auth.uid;
+    }
+
+    // Users
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow write: if isUser(userId);
+    }
+
+    // Tenants
+    match /tenants/{tenantId} {
+      allow create: if isAuthenticated() && request.resource.data.ownerId == request.auth.uid;
+      allow read: if isTenantMember(tenantId) || isNewTenantCreation(tenantId);
+      allow update: if isTenantOwner(tenantId);
+      allow delete: if false;
+
+      match /members/{memberId} {
+        allow read: if isTenantMember(tenantId) || isNewTenantCreation(tenantId);
+        allow create: if isAuthenticated() && (
+          (isNewTenantCreation(tenantId) && memberId == request.auth.uid && request.resource.data.role == 'GYM_OWNER') || 
+          isTenantOwner(tenantId) ||
+          (memberId == request.auth.uid && request.resource.data.role == 'CLIENT')
+        );
+        allow update, delete: if isTenantOwner(tenantId);
+      }
+
+      match /clients/{clientId} {
+        allow read: if isTenantMember(tenantId);
+        allow write: if isTenantOwner(tenantId) || 
+          (isAuthenticated() && exists(/databases/$(database)/documents/tenants/$(tenantId)/members/$(request.auth.uid)) && get(/databases/$(database)/documents/tenants/$(tenantId)/members/$(request.auth.uid)).data.role == 'TRAINER') ||
+          (isAuthenticated() && (resource.data.userId == request.auth.uid || request.resource.data.userId == request.auth.uid));
+
+        match /personalRecords/{recordId} {
+          allow read, write: if isTenantMember(tenantId);
+        }
+
+        match /progressWeight/{weightId} {
+          allow read, write: if isTenantMember(tenantId);
+        }
+
+        match /measurements/{measurementId} {
+          allow read, write: if isTenantMember(tenantId);
+        }
+
+        match /progressPhotos/{photoId} {
+          allow read, write: if isTenantMember(tenantId);
+        }
+
+        match /goals/{goalId} {
+          allow read, write: if isTenantMember(tenantId);
+        }
+
+        match /milestones/{milestoneId} {
+          allow read, write: if isTenantMember(tenantId);
+        }
+
+        match /foodLogs/{logId} {
+          allow read, write: if isTenantMember(tenantId);
+        }
+
+        match /waterLogs/{waterLogId} {
+          allow read, write: if isTenantMember(tenantId);
+        }
+
+        match /nutritionSettings/{settingId} {
+          allow read, write: if isTenantMember(tenantId);
+        }
+      }
+
+      match /foods/{foodId} {
+        allow read: if isTenantMember(tenantId);
+        allow write: if isTenantOwner(tenantId) || 
+          (isAuthenticated() && exists(/databases/$(database)/documents/tenants/$(tenantId)/members/$(request.auth.uid)) && get(/databases/$(database)/documents/tenants/$(tenantId)/members/$(request.auth.uid)).data.role == 'TRAINER');
+      }
+
+      match /recipes/{recipeId} {
+        allow read: if isTenantMember(tenantId);
+        allow write: if isTenantOwner(tenantId) || 
+          (isAuthenticated() && exists(/databases/$(database)/documents/tenants/$(tenantId)/members/$(request.auth.uid)) && get(/databases/$(database)/documents/tenants/$(tenantId)/members/$(request.auth.uid)).data.role == 'TRAINER');
+      }
+
+      match /mealPlans/{planId} {
+        allow read: if isTenantMember(tenantId);
+        allow write: if isTenantOwner(tenantId) || 
+          (isAuthenticated() && exists(/databases/$(database)/documents/tenants/$(tenantId)/members/$(request.auth.uid)) && get(/databases/$(database)/documents/tenants/$(tenantId)/members/$(request.auth.uid)).data.role == 'TRAINER');
+      }
+
+      match /nutritionAssignments/{assignmentId} {
+        allow read: if isTenantMember(tenantId);
+        allow write: if isTenantOwner(tenantId) || 
+          (isAuthenticated() && exists(/databases/$(database)/documents/tenants/$(tenantId)/members/$(request.auth.uid)) && get(/databases/$(database)/documents/tenants/$(tenantId)/members/$(request.auth.uid)).data.role == 'TRAINER');
+      }
+
+      match /trainers/{trainerId} {
+        allow read: if isTenantMember(tenantId);
+        allow write: if isTenantOwner(tenantId);
+      }
+
+      match /exercises/{exerciseId} {
+        allow read: if isTenantMember(tenantId);
+        allow write: if isTenantOwner(tenantId) || 
+          (isAuthenticated() && exists(/databases/$(database)/documents/tenants/$(tenantId)/members/$(request.auth.uid)) && get(/databases/$(database)/documents/tenants/$(tenantId)/members/$(request.auth.uid)).data.role == 'TRAINER');
+      }
+
+      match /programs/{programId} {
+        allow read: if isTenantMember(tenantId);
+        allow write: if isTenantOwner(tenantId) || 
+          (isAuthenticated() && exists(/databases/$(database)/documents/tenants/$(tenantId)/members/$(request.auth.uid)) && get(/databases/$(database)/documents/tenants/$(tenantId)/members/$(request.auth.uid)).data.role == 'TRAINER');
+
+        match /workouts/{workoutId} {
+          allow read: if isTenantMember(tenantId);
+          allow write: if isTenantOwner(tenantId) || 
+            (isAuthenticated() && exists(/databases/$(database)/documents/tenants/$(tenantId)/members/$(request.auth.uid)) && get(/databases/$(database)/documents/tenants/$(tenantId)/members/$(request.auth.uid)).data.role == 'TRAINER');
+
+          match /exercises/{workoutExerciseId} {
+            allow read: if isTenantMember(tenantId);
+            allow write: if isTenantOwner(tenantId) || 
+              (isAuthenticated() && exists(/databases/$(database)/documents/tenants/$(tenantId)/members/$(request.auth.uid)) && get(/databases/$(database)/documents/tenants/$(tenantId)/members/$(request.auth.uid)).data.role == 'TRAINER');
+          }
+        }
+
+        match /weeks/{weekId} {
+          allow read: if isTenantMember(tenantId);
+          allow write: if isTenantOwner(tenantId) || 
+            (isAuthenticated() && exists(/databases/$(database)/documents/tenants/$(tenantId)/members/$(request.auth.uid)) && get(/databases/$(database)/documents/tenants/$(tenantId)/members/$(request.auth.uid)).data.role == 'TRAINER');
+        }
+
+        match /schedule/{scheduleItemId} {
+          allow read: if isTenantMember(tenantId);
+          allow write: if isTenantOwner(tenantId) || 
+            (isAuthenticated() && exists(/databases/$(database)/documents/tenants/$(tenantId)/members/$(request.auth.uid)) && get(/databases/$(database)/documents/tenants/$(tenantId)/members/$(request.auth.uid)).data.role == 'TRAINER');
+        }
+      }
+
+      match /workoutTemplates/{templateId} {
+        allow read: if isTenantMember(tenantId);
+        allow write: if isTenantOwner(tenantId) || 
+          (isAuthenticated() && exists(/databases/$(database)/documents/tenants/$(tenantId)/members/$(request.auth.uid)) && get(/databases/$(database)/documents/tenants/$(tenantId)/members/$(request.auth.uid)).data.role == 'TRAINER');
+
+        match /exercises/{templateExerciseId} {
+          allow read: if isTenantMember(tenantId);
+          allow write: if isTenantOwner(tenantId) || 
+            (isAuthenticated() && exists(/databases/$(database)/documents/tenants/$(tenantId)/members/$(request.auth.uid)) && get(/databases/$(database)/documents/tenants/$(tenantId)/members/$(request.auth.uid)).data.role == 'TRAINER');
+        }
+      }
+
+      match /assignments/{assignmentId} {
+        allow read: if isTenantMember(tenantId);
+        allow write: if isTenantOwner(tenantId) || 
+          (isAuthenticated() && exists(/databases/$(database)/documents/tenants/$(tenantId)/members/$(request.auth.uid)) && get(/databases/$(database)/documents/tenants/$(tenantId)/members/$(request.auth.uid)).data.role == 'TRAINER');
+      }
+
+      match /checkInTemplates/{templateId} {
+        allow read: if isTenantMember(tenantId);
+        allow write: if isTenantOwner(tenantId) || 
+          (isAuthenticated() && exists(/databases/$(database)/documents/tenants/$(tenantId)/members/$(request.auth.uid)) && get(/databases/$(database)/documents/tenants/$(tenantId)/members/$(request.auth.uid)).data.role == 'TRAINER');
+      }
+
+      match /checkInAssignments/{assignmentId} {
+        allow read: if isTenantMember(tenantId);
+        allow write: if isTenantOwner(tenantId) || 
+          (isAuthenticated() && exists(/databases/$(database)/documents/tenants/$(tenantId)/members/$(request.auth.uid)) && get(/databases/$(database)/documents/tenants/$(tenantId)/members/$(request.auth.uid)).data.role == 'TRAINER');
+      }
+
+      match /checkIns/{checkInId} {
+        allow read: if isTenantMember(tenantId);
+        allow create: if isTenantMember(tenantId);
+        allow update: if isTenantMember(tenantId);
+        allow delete: if isTenantOwner(tenantId) || 
+          (isAuthenticated() && exists(/databases/$(database)/documents/tenants/$(tenantId)/members/$(request.auth.uid)) && get(/databases/$(database)/documents/tenants/$(tenantId)/members/$(request.auth.uid)).data.role == 'TRAINER');
+      }
+
+      match /habits/{habitId} {
+        allow read: if isTenantMember(tenantId);
+        allow create: if isTenantMember(tenantId);
+        allow update: if isTenantMember(tenantId);
+        allow delete: if isTenantMember(tenantId);
+      }
+
+      match /habitLogs/{logId} {
+        allow read: if isTenantMember(tenantId);
+        allow create: if isTenantMember(tenantId);
+        allow update: if isTenantMember(tenantId);
+        allow delete: if isTenantMember(tenantId);
+      }
+
+      match /workoutSessions/{sessionId} {
+        allow read: if isTenantMember(tenantId);
+        allow create: if isTenantMember(tenantId);
+        allow update: if isTenantMember(tenantId);
+        allow delete: if isTenantOwner(tenantId);
+
+        match /sets/{setId} {
+          allow read, write: if isTenantMember(tenantId);
+        }
+      }
+      
+      match /invitations/{invitationId} {
+        allow read: if isTenantMember(tenantId);
+        allow write: if isTenantOwner(tenantId);
+      }
+
+      match /settings/{document} {
+        allow read: if true; // Allows the login page to read branding before auth
+        allow write: if isTenantOwner(tenantId) || isNewTenantCreation(tenantId);
+      }
+
+      match /domains/{domainId} {
+        allow read: if true;
+        allow write: if isTenantOwner(tenantId);
+      }
+
+      match /auditLogs/{logId} {
+        allow read: if isTenantOwner(tenantId);
+        allow create: if isTenantMember(tenantId) || isNewTenantCreation(tenantId);
+        allow update, delete: if false;
+      }
+
+      match /billing/{billingId} {
+        allow read: if isTenantMember(tenantId);
+        allow write: if isTenantOwner(tenantId);
+      }
+
+      match /billingEvents/{eventId} {
+        allow read: if isTenantOwner(tenantId);
+        allow write: if isTenantOwner(tenantId);
+      }
+
+      match /aiUsage/{usageId} {
+        allow read: if isTenantMember(tenantId);
+        allow write: if isTenantMember(tenantId);
+      }
+    }
+
+    // System Exercises (Global curated exercises)
+    match /systemExercises/{exerciseId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+
+    // System Foods (Global curated food items)
+    match /systemFoods/{foodId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+  }
+}

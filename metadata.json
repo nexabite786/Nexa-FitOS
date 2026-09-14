@@ -1,0 +1,6 @@
+{
+  "name": "NEXA FITOS",
+  "description": "The Operating System for Modern Fitness Businesses.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

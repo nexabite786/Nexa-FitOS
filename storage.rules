@@ -1,0 +1,31 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Checks if the user is a member of the given tenant
+    function isTenantMember(tenantId) {
+      return isAuthenticated() && firestore.exists(/databases/(default)/documents/tenants/$(tenantId)/members/$(request.auth.uid));
+    }
+
+    // Checks if the user is an owner of the given tenant
+    function isTenantOwner(tenantId) {
+      return isAuthenticated() && 
+             firestore.exists(/databases/(default)/documents/tenants/$(tenantId)/members/$(request.auth.uid)) &&
+             firestore.get(/databases/(default)/documents/tenants/$(tenantId)/members/$(request.auth.uid)).data.role == 'OWNER';
+    }
+
+    match /tenantAssets/{tenantId}/{allPaths=**} {
+      allow read: if isTenantMember(tenantId);
+    }
+    
+    match /tenantAssets/{tenantId}/branding/{imageId} {
+      allow read: if true;
+      allow write: if isTenantOwner(tenantId)
+                     && request.resource.size < 5 * 1024 * 1024 // 5MB max
+                     && request.resource.contentType.matches('image/.*');
+    }
+  }
+}
