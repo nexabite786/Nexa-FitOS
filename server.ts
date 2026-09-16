@@ -1,29 +1,65 @@
 import express from 'express';
 import path from 'path';
+import fs from 'fs';
 import { createServer as createViteServer } from 'vite';
 import crypto from 'crypto';
 import Razorpay from 'razorpay';
-import { initializeApp, cert } from 'firebase-admin/app';
+import { initializeApp, cert, getApps, getApp, App } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import { getAuth } from 'firebase-admin/auth';
 import { GoogleGenAI } from '@google/genai';
 import { buildClientAIContext } from './src/server/aiContext';
+import firebaseConfig from './firebase-applet-config.json';
 
 // Initialize Firebase Admin
+let firebaseAdminApp: App | null = null;
 let firebaseInitialized = false;
+
 try {
-  const serviceAccountJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
-  if (serviceAccountJson) {
-    initializeApp({
-      credential: cert(JSON.parse(serviceAccountJson)),
-    });
+  if (getApps().length > 0) {
+    firebaseAdminApp = getApp();
     firebaseInitialized = true;
+  } else {
+    const rawServiceAccount = process.env.FIREBASE_SERVICE_ACCOUNT_JSON?.trim();
+    let serviceAccount: any = null;
+
+    if (rawServiceAccount) {
+      if (rawServiceAccount.startsWith('{') && rawServiceAccount.endsWith('}')) {
+        try {
+          serviceAccount = JSON.parse(rawServiceAccount);
+        } catch (e) {
+          console.warn('FIREBASE_SERVICE_ACCOUNT_JSON string could not be parsed as JSON, falling back:', e);
+        }
+      } else if (fs.existsSync(rawServiceAccount)) {
+        try {
+          serviceAccount = JSON.parse(fs.readFileSync(rawServiceAccount, 'utf-8'));
+        } catch (e) {
+          console.warn('FIREBASE_SERVICE_ACCOUNT_JSON file path could not be parsed, falling back:', e);
+        }
+      }
+    }
+
+    if (serviceAccount && typeof serviceAccount === 'object' && (serviceAccount.project_id || serviceAccount.client_email)) {
+      firebaseAdminApp = initializeApp({
+        credential: cert(serviceAccount),
+        projectId: serviceAccount.project_id || firebaseConfig.projectId,
+      });
+      firebaseInitialized = true;
+    } else {
+      // Initialize with Application Default Credentials / Project ID from firebase-applet-config.json
+      firebaseAdminApp = initializeApp({
+        projectId: firebaseConfig.projectId,
+      });
+      firebaseInitialized = true;
+    }
   }
 } catch (error) {
-  console.warn('Firebase Admin failed to initialize (FIREBASE_SERVICE_ACCOUNT_JSON might be invalid or missing):', error);
+  console.warn('Firebase Admin initialization notice:', error);
 }
 
-const db = firebaseInitialized ? getFirestore() : null;
+const db = firebaseInitialized && firebaseAdminApp
+  ? (firebaseConfig.firestoreDatabaseId ? getFirestore(firebaseAdminApp, firebaseConfig.firestoreDatabaseId) : getFirestore(firebaseAdminApp))
+  : null;
 
 async function startServer() {
   const app = express();
